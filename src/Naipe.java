@@ -1,2 +1,6 @@
-public class Naipe {
+public enum Naipe {
+    OUROS,
+    COPAS,
+    ESPADAS,
+    PAUS
 }
