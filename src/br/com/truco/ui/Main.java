@@ -1,3 +1,5 @@
+package br.com.truco.ui;
+
 import br.com.truco.engine.InterfaceUsuario;
 
 public class Main {

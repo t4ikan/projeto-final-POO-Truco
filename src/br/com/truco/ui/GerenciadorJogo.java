@@ -1,3 +1,5 @@
+package br.com.truco.ui;
+
 import br.com.truco.engine.InterfaceUsuario;
 import br.com.truco.engine.Partida;
 import br.com.truco.model.Dupla;
