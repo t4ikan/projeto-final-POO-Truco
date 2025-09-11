@@ -103,13 +103,27 @@ public class InterfaceUsuario {
         return jogador.jogarCarta(escolha - 1);
     }
 
-    public int pedirAcao(Jogador jogador) {
+    public int pedirAcao(Jogador jogador, boolean podeTrucar) {
         System.out.println("\n> Vez de " + jogador.getNome() + ". Sua mão: " + jogador.getMao());
-        System.out.println("Ações: 1-Jogar Carta, 2-TRUCO");
-        int escolha = -1;
-        while(escolha != 1 && escolha != 2) {
+        System.out.print("Ações: 1-Jogar Carta"); // Mostra a ação base
+
+        if (podeTrucar) {
+            System.out.println(", 2-TRUCO"); // Mostra a opção de truco se for permitido
+        } else {
+            System.out.println(); // Apenas pula a linha
+        }
+
+        int escolha;
+        while (true) {
             System.out.print("Escolha: ");
             escolha = lerOpcao();
+            if (escolha == 1) { // Jogar carta é sempre válido
+                break;
+            }
+            if (escolha == 2 && podeTrucar) { // Trucar só é válido se permitido
+                break;
+            }
+            mostrarMensagem("Opção inválida.");
         }
         return escolha;
     }
