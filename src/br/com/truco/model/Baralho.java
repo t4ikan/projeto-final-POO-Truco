@@ -2,35 +2,28 @@ package br.com.truco.model;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
-
 
 public class Baralho {
-    private final List<Carta> cartas;
+    ArrayList<Carta> baralho = new ArrayList<>();
 
     public Baralho() {
-        this.cartas = new ArrayList<>();
-        this.criarBaralho();
-        this.embaralhar();
-    }
-
-    private void criarBaralho() {
-        String[] valores = {"A", "2", "3", "4", "5", "6", "7", "Q", "J", "K"};
-        for (Naipe naipe : Naipe.values()) {
+        String[] naipes = {"O", "E", "C", "P"};
+        String[] valores = {"A", "2", "3", "Q", "J", "K", "7", "6", "5", "4"};
+        for (String naipe : naipes) {
             for (String valor : valores) {
-                this.cartas.add(new Carta(valor, naipe));
+                baralho.add(new Carta(valor, naipe));
             }
         }
     }
 
-    private void embaralhar() {
-        Collections.shuffle(this.cartas);
+    public void embaralhar() {
+        Collections.shuffle(baralho);
     }
 
-    public Carta retirarCarta() {
-        if (this.cartas.isEmpty()) {
-            return null;
+    public Carta distribuir() {
+        if (!baralho.isEmpty()) {
+            return baralho.remove(0);
         }
-        return this.cartas.remove(0);
+        return null;
     }
 }

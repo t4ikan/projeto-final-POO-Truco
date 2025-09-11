@@ -1,45 +1,68 @@
 package br.com.truco.model;
 
 public class Carta {
-    private final String valor;
-    private final Naipe naipe;
-    private final int forca;
+    String valor;
+    String naipe;
+    int peso;
 
-    public Carta(String valor, Naipe naipe) {
+    public Carta(String valor, String naipe) {
         this.valor = valor;
         this.naipe = naipe;
-        this.forca = this.calcularForca();
-    }
 
-    public int getForca() {
-        return forca;
-    }
-
-    private int calcularForca() {
-        // Manilhas
-        if (this.naipe == Naipe.PAUS && this.valor.equals("4")) return 14; // Zape
-        if (this.naipe == Naipe.COPAS && this.valor.equals("7")) return 13; // 7 de Copas
-        if (this.naipe == Naipe.ESPADAS && this.valor.equals("A")) return 12; // Espadilha
-        if (this.naipe == Naipe.OUROS && this.valor.equals("7")) return 11; // 7 de Ouros
-
-        // Cartas Comuns
-        return switch (this.valor) {
-            case "3" -> 10;
-            case "2" -> 9;
-            case "A" -> 8;
-            case "K" -> 7;
-            case "J" -> 6;
-            case "Q" -> 5;
-            case "7" -> 4;
-            case "6" -> 3;
-            case "5" -> 2;
-            case "4" -> 1;
-            default -> 0;
-        };
+        if (valor.equals("4") && naipe.equals("P")) this.peso = 10;
+        else if (valor.equals("7") && naipe.equals("C")) this.peso = 9;
+        else if (valor.equals("A") && naipe.equals("E")) this.peso = 8;
+        else if (valor.equals("7") && naipe.equals("O")) this.peso = 7;
+        else if (valor.equals("3")) this.peso = 6;
+        else if (valor.equals("2")) this.peso = 5;
+        else if (valor.equals("A")) this.peso = 4;
+        else if (valor.equals("K")) this.peso = 3;
+        else if (valor.equals("J")) this.peso = 2;
+        else if (valor.equals("Q")) this.peso = 1;
+        else this.peso = 0;
     }
 
     @Override
     public String toString() {
-        return valor + " de " + naipe;
+        String valorPorExtenso;
+        String naipePorExtenso;
+
+        switch (this.valor) {
+            case "A":
+                valorPorExtenso = "ÁS";
+                break;
+            case "K":
+                valorPorExtenso = "REI";
+                break;
+            case "J":
+                valorPorExtenso = "VALETE";
+                break;
+            case "Q":
+                valorPorExtenso = "DAMA";
+                break;
+            default:
+                valorPorExtenso = this.valor;
+                break;
+        }
+
+        switch (this.naipe) {
+            case "P":
+                naipePorExtenso = "PAUS";
+                break;
+            case "C":
+                naipePorExtenso = "COPAS";
+                break;
+            case "E":
+                naipePorExtenso = "ESPADAS";
+                break;
+            case "O":
+                naipePorExtenso = "OUROS";
+                break;
+            default:
+                naipePorExtenso = "";
+                break;
+        }
+
+        return valorPorExtenso + " de " + naipePorExtenso;
     }
 }

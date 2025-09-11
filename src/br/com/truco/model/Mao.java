@@ -1,175 +1,167 @@
 package br.com.truco.model;
 
+import java.util.ArrayList;
 import br.com.truco.engine.InterfaceUsuario;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class Mao {
-    private final List<Jogador> ordemJogadores;
     private final Dupla dupla1, dupla2;
+    private final ArrayList<Jogador> jogadores;
+    private final int pontosJogoD1, pontosJogoD2;
     private final InterfaceUsuario iu;
+    private int valorMao = 1;
 
-    private int valorMao;
-    private final int pontosD1, pontosD2;
-
-    public Mao(List<Jogador> ordemJogadores, Dupla d1, Dupla d2, int pontosD1, int pontosD2) {
-        this.ordemJogadores = ordemJogadores;
+    public Mao(ArrayList<Jogador> jogadores, Dupla d1, Dupla d2, int p1, int p2, InterfaceUsuario iu) {
+        this.jogadores = jogadores;
         this.dupla1 = d1;
         this.dupla2 = d2;
-        this.pontosD1 = pontosD1;
-        this.pontosD2 = pontosD2;
-        this.iu = new InterfaceUsuario();
-
-        // A mão já começa valendo 3 se for Mão de Dez, ou 1 caso contrário.
-        this.valorMao = ehMaoDeDez() ? 3 : 1;
+        this.pontosJogoD1 = p1;
+        this.pontosJogoD2 = p2;
+        this.iu = iu;
     }
 
     public int[] jogar() {
         distribuirCartas();
-
-        boolean isMaoDeDez = ehMaoDeDez();
-
-        if (isMaoDeDez) {
-            iu.mostrarMensagem("\n!!! ATENÇÃO: MÃO DE DEZ - A MÃO COMEÇA VALENDO " + this.valorMao + " PONTOS !!!");
-
-            Dupla duplaComDez = pontosD1 >= 10 ? dupla1 : dupla2;
-            Dupla duplaAdversaria = duplaComDez.equals(dupla1) ? dupla2 : dupla1;
-
-            // Só oferece a opção de correr se apenas uma dupla tiver 10+ pontos.
-            // Se ambas tiverem, o jogo é obrigatório.
-            if (! (pontosD1 >= 10 && pontosD2 >= 10)) {
-                boolean aceitouJogar = iu.querJogarMaoDeDez(duplaAdversaria);
-
-                if (!aceitouJogar) { // A dupla adversária correu
-                    this.valorMao = 1; // O valor da mão cai para 1
-                    iu.mostrarMensagem(duplaAdversaria + " correu! " + duplaComDez + " vence e ganha " + this.valorMao + " ponto.");
-                    return duplaComDez.equals(dupla1) ? new int[]{this.valorMao, 0} : new int[]{0, this.valorMao};
-                }
-            }
-        }
-
-        int[] vitoriasVaza = new int[2];
+        int[] vitoriasVaza = {0, 0};
         int jogadorInicialVaza = 0;
+        Dupla duplaComTurnoAposta = null;
 
         for (int i = 0; i < 3; i++) {
-            Vaza vaza = new Vaza(ordemJogadores, jogadorInicialVaza);
+            ArrayList<Carta> cartasVaza = new ArrayList<>();
+            ArrayList<Jogador> jogadoresVaza = new ArrayList<>();
 
-            while (!vaza.estaFechada()) {
-                Jogador jogadorDaVez = vaza.getProximoJogador();
+            for (int j = 0; j < 4; j++) {
+                int idxJogadorAtual = (jogadorInicialVaza + j) % 4;
+                Jogador jogadorAtual = jogadores.get(idxJogadorAtual);
+                Carta cartaJogada = obterJogada(jogadorAtual, duplaComTurnoAposta);
 
-                // ALTERADO: Simplificado para não permitir NENHUM truco na Mão de Dez.
-                // Na mão normal, ainda permite trucar.
-                if (!isMaoDeDez) {
-                    int acao = iu.pedirAcao(jogadorDaVez, true); // Permite trucar
-                    if (acao == 2) { // TRUCO
-                        Dupla duplaOponente = dupla1.contemJogador(jogadorDaVez) ? dupla2 : dupla1;
-                        boolean aceitou = iu.responderTruco(duplaOponente);
-                        if (aceitou) {
-                            valorMao = 3;
-                        } else {
-                            return dupla1.contemJogador(jogadorDaVez) ? new int[]{1, 0} : new int[]{0, 1};
-                        }
-                    }
+                if (cartaJogada == null) {
+                    Dupla duplaCorreu = dupla1.contemJogador(jogadorAtual) ? dupla1 : dupla2;
+                    return duplaCorreu.equals(dupla1) ? new int[]{0, valorMao} : new int[]{valorMao, 0};
                 }
-
-                // Se for Mão de Dez, o jogador é forçado a apenas jogar a carta.
-                Carta cartaJogada = iu.pedirCarta(jogadorDaVez);
-                vaza.adicionarJogada(jogadorDaVez, cartaJogada);
-                iu.mostrarJogada(jogadorDaVez, cartaJogada);
+                cartasVaza.add(cartaJogada);
+                jogadoresVaza.add(jogadorAtual);
+                iu.mostrarJogada(jogadorAtual, cartaJogada);
             }
 
-            Jogador vencedorVaza = vaza.getVencedor(dupla1);
+            Jogador vencedorVaza = determinarVencedorVaza(cartasVaza, jogadoresVaza);
+            iu.mostrarVencedorVaza(vencedorVaza);
+
             if (vencedorVaza == null) {
-                iu.mostrarResultadoVaza(i + 1, null);
                 vitoriasVaza[0]++;
                 vitoriasVaza[1]++;
             } else {
-                iu.mostrarResultadoVaza(i + 1, vencedorVaza);
                 if (dupla1.contemJogador(vencedorVaza)) vitoriasVaza[0]++;
                 else vitoriasVaza[1]++;
-                jogadorInicialVaza = ordemJogadores.indexOf(vencedorVaza);
+                jogadorInicialVaza = jogadores.indexOf(vencedorVaza);
             }
 
-            Dupla vencedoraMao = determinarVencedorMao(vitoriasVaza);
+            Dupla vencedoraMao = checarVencedorMao(vitoriasVaza);
             if (vencedoraMao != null) {
-                // O valor da mão já foi definido no início, então apenas retornamos o vencedor.
-                return vencedoraMao.equals(dupla1) ? new int[]{valorMao, 0} : new int[]{0, valorMao};
+                if (dupla1.equals(vencedoraMao)) {
+                    return new int[]{valorMao, 0};
+                } else {
+                    return new int[]{0, valorMao};
+                }
             }
         }
-
         return new int[]{0, 0};
-    }
-
-    private boolean ehMaoDeDez() {
-        return pontosD1 >= 10 || pontosD2 >= 10;
     }
 
     private void distribuirCartas() {
         Baralho baralho = new Baralho();
-        for (Jogador jogador : ordemJogadores) {
-            List<Carta> mao = new ArrayList<>();
-            mao.add(baralho.retirarCarta());
-            mao.add(baralho.retirarCarta());
-            mao.add(baralho.retirarCarta());
-            jogador.receberCartas(mao);
+        baralho.embaralhar();
+        for (Jogador j : jogadores) {
+
+            j.getMao().clear();
+
+            j.getMao().add(baralho.distribuir());
+            j.getMao().add(baralho.distribuir());
+            j.getMao().add(baralho.distribuir());
         }
     }
 
-    private Dupla determinarVencedorMao(int[] vitoriasVaza) {
-        if (vitoriasVaza[0] == 2 && vitoriasVaza[1] < 2) return dupla1;
-        if (vitoriasVaza[1] == 2 && vitoriasVaza[0] < 2) return dupla2;
-        if (vitoriasVaza[0] == 2 && vitoriasVaza[1] == 1) return dupla1;
-        if (vitoriasVaza[1] == 2 && vitoriasVaza[0] == 1) return dupla2;
-        return null;
-    }
-}
-
-class Vaza {
-    private final List<Jogador> ordemJogadores;
-    private final Jogador[] jogadoresDaVaza = new Jogador[4];
-    private final Carta[] cartasJogadas = new Carta[4];
-    private int jogadasFeitas = 0;
-    private final int jogadorInicial;
-
-    public Vaza(List<Jogador> ordemGeral, int jogadorInicial) {
-        this.ordemJogadores = ordemGeral;
-        this.jogadorInicial = jogadorInicial;
-    }
-
-    public Jogador getProximoJogador() {
-        return ordemJogadores.get((jogadorInicial + jogadasFeitas) % 4);
-    }
-
-    public void adicionarJogada(Jogador jogador, Carta carta) {
-        jogadoresDaVaza[jogadasFeitas] = jogador;
-        cartasJogadas[jogadasFeitas] = carta;
-        jogadasFeitas++;
-    }
-
-    public boolean estaFechada() {
-        return jogadasFeitas == 4;
-    }
-
-    public Jogador getVencedor(Dupla dupla1) {
-        Carta maiorCarta = null;
-        Jogador vencedor = null;
+    private Jogador determinarVencedorVaza(ArrayList<Carta> cartas, ArrayList<Jogador> jogadores) {
+        Carta maiorCarta = cartas.get(0);
+        Jogador vencedor = jogadores.get(0);
         boolean empate = false;
-
-        for (int i = 0; i < 4; i++) {
-            if (maiorCarta == null) {
-                maiorCarta = cartasJogadas[i];
-                vencedor = jogadoresDaVaza[i];
-            } else {
-                if (cartasJogadas[i].getForca() > maiorCarta.getForca()) {
-                    maiorCarta = cartasJogadas[i];
-                    vencedor = jogadoresDaVaza[i];
-                    empate = false;
-                } else if (cartasJogadas[i].getForca() == maiorCarta.getForca()) {
-                    empate = true;
-                }
+        for (int i = 1; i < cartas.size(); i++) {
+            if (cartas.get(i).peso > maiorCarta.peso) {
+                maiorCarta = cartas.get(i);
+                vencedor = jogadores.get(i);
+                empate = false;
+            } else if (cartas.get(i).peso == maiorCarta.peso) {
+                empate = true;
             }
         }
         return empate ? null : vencedor;
+    }
+
+    private Dupla checarVencedorMao(int[] vitorias) {
+        if (vitorias[0] >= 2 && vitorias[0] > vitorias[1]) return dupla1;
+        if (vitorias[1] >= 2 && vitorias[1] > vitorias[0]) return dupla2;
+        return null;
+    }
+
+    private Carta obterJogada(Jogador jogador, Dupla duplaPodeAumentar) {
+        while (true) {
+            iu.mostrarMao(jogador);
+            String promptAcoes = "(1-" + jogador.getMao().size() + ") Jogar Carta";
+            Dupla duplaJogador = dupla1.contemJogador(jogador) ? dupla1 : dupla2;
+
+            boolean emMaoDeDez = (dupla1.equals(duplaJogador) && pontosJogoD1 == 10) || (dupla2.equals(duplaJogador) && pontosJogoD2 == 10);
+            boolean podeApostar = (duplaPodeAumentar == null || duplaPodeAumentar.equals(duplaJogador)) && valorMao < 12;
+
+            if (emMaoDeDez) {
+                iu.mostrarMensagem("!! MÃO DE DEZ: Não é permitido trucar!");
+                podeApostar = false;
+            }
+
+            if (podeApostar) {
+                promptAcoes += " | (99) " + getNomeAposta();
+            }
+
+            int acao = iu.lerOpcao(promptAcoes + ": ");
+            if (acao >= 1 && acao <= jogador.getMao().size()) {
+                return jogador.jogarCarta(acao - 1);
+            } else if (acao == 99 && podeApostar) {
+                iu.mostrarMensagem("\n" + jogador.getNome() + " pediu " + getNomeAposta() + "!");
+                int resposta = iu.lerOpcao(getDuplaOponente(duplaJogador) + ", aceitam? (1-Aceitar, 2-Correr, 3-Aumentar): ");
+                if (resposta == 1) {
+                    valorMao = getValorProximaAposta();
+                    duplaPodeAumentar = null;
+                } else if (resposta == 2) {
+                    return null; // Retorna null para indicar que o jogador correu
+                } else if (resposta == 3) {
+                    valorMao = getValorProximaAposta();
+                    duplaPodeAumentar = getDuplaOponente(duplaJogador);
+                }
+            } else {
+                iu.mostrarMensagem("Ação inválida.");
+            }
+        }
+    }
+
+    private String getNomeAposta() {
+        return switch (valorMao) {
+            case 1 -> "TRUCO";
+            case 3 -> "SEIS";
+            case 6 -> "NOVE";
+            case 9 -> "DOZE";
+            default -> "";
+        };
+    }
+
+    private int getValorProximaAposta() {
+        return switch (valorMao) {
+            case 1 -> 3;
+            case 3 -> 6;
+            case 6 -> 9;
+            case 9 -> 12;
+            default -> valorMao;
+        };
+    }
+
+    private Dupla getDuplaOponente(Dupla dupla) {
+        return dupla.equals(dupla1) ? dupla2 : dupla1;
     }
 }
