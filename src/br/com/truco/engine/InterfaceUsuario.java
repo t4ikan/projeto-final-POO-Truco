@@ -113,7 +113,7 @@ public class InterfaceUsuario {
             System.out.println(); // Apenas pula a linha
         }
 
-        int escolha;
+        int escolha = -1;
         while (true) {
             System.out.print("Escolha: ");
             escolha = lerOpcao();
@@ -126,6 +126,19 @@ public class InterfaceUsuario {
             mostrarMensagem("Opção inválida.");
         }
         return escolha;
+    }
+
+    public boolean querJogarMaoDeDez(Dupla dupla) {
+        System.out.println("\n> " + dupla + ", vocês aceitam jogar a Mão de Dez?");
+        System.out.println("  A mão vale 3 pontos para o vencedor.");
+        System.out.println("  Se correrem, a dupla adversária ganha 1 ponto.");
+        System.out.println("1- ACEITAR JOGAR | 2- CORRER");
+        int escolha = -1;
+        while(escolha != 1 && escolha != 2) {
+            System.out.print("Escolha: ");
+            escolha = lerOpcao();
+        }
+        return escolha == 1;
     }
 
     public boolean responderTruco(Dupla duplaRespondendo) {

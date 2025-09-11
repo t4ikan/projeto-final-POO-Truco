@@ -11,7 +11,7 @@ public class Mao {
     private final InterfaceUsuario iu;
 
     private int valorMao;
-    private final int pontosD1, pontosD2; // Pontos correntes no jogo
+    private final int pontosD1, pontosD2;
 
     public Mao(List<Jogador> ordemJogadores, Dupla d1, Dupla d2, int pontosD1, int pontosD2) {
         this.ordemJogadores = ordemJogadores;
@@ -20,20 +20,37 @@ public class Mao {
         this.pontosD1 = pontosD1;
         this.pontosD2 = pontosD2;
         this.iu = new InterfaceUsuario();
-        this.valorMao = 1; // A mão sempre começa valendo 1 ponto. O valor muda depois.
+
+        // A mão já começa valendo 3 se for Mão de Dez, ou 1 caso contrário.
+        this.valorMao = ehMaoDeDez() ? 3 : 1;
     }
 
     public int[] jogar() {
         distribuirCartas();
-        // Verifica se alguma dupla está na mão de dez.
+
         boolean isMaoDeDez = ehMaoDeDez();
+
         if (isMaoDeDez) {
-            iu.mostrarMensagem("\n!!! ATENÇÃO: MÃO DE DEZ !!!");
+            iu.mostrarMensagem("\n!!! ATENÇÃO: MÃO DE DEZ - A MÃO COMEÇA VALENDO " + this.valorMao + " PONTOS !!!");
+
+            Dupla duplaComDez = pontosD1 >= 10 ? dupla1 : dupla2;
+            Dupla duplaAdversaria = duplaComDez.equals(dupla1) ? dupla2 : dupla1;
+
+            // Só oferece a opção de correr se apenas uma dupla tiver 10+ pontos.
+            // Se ambas tiverem, o jogo é obrigatório.
+            if (! (pontosD1 >= 10 && pontosD2 >= 10)) {
+                boolean aceitouJogar = iu.querJogarMaoDeDez(duplaAdversaria);
+
+                if (!aceitouJogar) { // A dupla adversária correu
+                    this.valorMao = 1; // O valor da mão cai para 1
+                    iu.mostrarMensagem(duplaAdversaria + " correu! " + duplaComDez + " vence e ganha " + this.valorMao + " ponto.");
+                    return duplaComDez.equals(dupla1) ? new int[]{this.valorMao, 0} : new int[]{0, this.valorMao};
+                }
+            }
         }
 
-        int[] vitoriasVaza = new int[2]; // Posição 0: Dupla 1, Posição 1: Dupla 2
+        int[] vitoriasVaza = new int[2];
         int jogadorInicialVaza = 0;
-        Dupla duplaPediuTruco = null;
 
         for (int i = 0; i < 3; i++) {
             Vaza vaza = new Vaza(ordemJogadores, jogadorInicialVaza);
@@ -41,45 +58,27 @@ public class Mao {
             while (!vaza.estaFechada()) {
                 Jogador jogadorDaVez = vaza.getProximoJogador();
 
-                // Lógica de Ações (Jogar, Trucar, etc
-                if (duplaPediuTruco == null) { // Só permite pedir truco se ainda não foi pedido.
-
-                    // Define se o jogador atual pode ou não pedir truco.
-                    boolean podeTrucar = !isMaoDeDez || // Pode trucar se NÃO for mão de dez
-                            (dupla1.contemJogador(jogadorDaVez) && pontosD1 < 10) || // Ou se for da dupla 1 e ela tiver menos de 10 pontos
-                            (dupla2.contemJogador(jogadorDaVez) && pontosD2 < 10);   // Ou se for da dupla 2 e ela tiver menos de 10 pontos
-
-                    int acao = iu.pedirAcao(jogadorDaVez, podeTrucar); // Passa a permissão para a interface
-
+                // ALTERADO: Simplificado para não permitir NENHUM truco na Mão de Dez.
+                // Na mão normal, ainda permite trucar.
+                if (!isMaoDeDez) {
+                    int acao = iu.pedirAcao(jogadorDaVez, true); // Permite trucar
                     if (acao == 2) { // TRUCO
-                        // Verifica a penalidade: se quem trucou já tinha 10 pontos.
-                        if ((dupla1.contemJogador(jogadorDaVez) && pontosD1 >= 10) ||
-                                (dupla2.contemJogador(jogadorDaVez) && pontosD2 >= 10)) {
-
-                            iu.mostrarMensagem("!!! PENALIDADE !!! A dupla com 10 ou mais pontos não pode trucar!");
-                            // Retorna 3 pontos para a dupla adversária.
-                            return dupla1.contemJogador(jogadorDaVez) ? new int[]{0, 3} : new int[]{3, 0};
-                        }
-
-                        // Lógica normal do truco
                         Dupla duplaOponente = dupla1.contemJogador(jogadorDaVez) ? dupla2 : dupla1;
                         boolean aceitou = iu.responderTruco(duplaOponente);
                         if (aceitou) {
                             valorMao = 3;
-                            duplaPediuTruco = dupla1.contemJogador(jogadorDaVez) ? dupla1 : dupla2;
                         } else {
-                            // Dupla correu, a que pediu truco ganha os pontos da mão antes do pedido.
                             return dupla1.contemJogador(jogadorDaVez) ? new int[]{1, 0} : new int[]{0, 1};
                         }
                     }
                 }
 
+                // Se for Mão de Dez, o jogador é forçado a apenas jogar a carta.
                 Carta cartaJogada = iu.pedirCarta(jogadorDaVez);
                 vaza.adicionarJogada(jogadorDaVez, cartaJogada);
                 iu.mostrarJogada(jogadorDaVez, cartaJogada);
             }
 
-            // Lógica para determinar o vencedor da vaza
             Jogador vencedorVaza = vaza.getVencedor(dupla1);
             if (vencedorVaza == null) {
                 iu.mostrarResultadoVaza(i + 1, null);
@@ -92,21 +91,9 @@ public class Mao {
                 jogadorInicialVaza = ordemJogadores.indexOf(vencedorVaza);
             }
 
-            // Checa se a mão já tem um vencedor
             Dupla vencedoraMao = determinarVencedorMao(vitoriasVaza);
             if (vencedoraMao != null) {
-                // Calcula os pontos corretos para a Mão de Dez
-                if (isMaoDeDez) {
-                    // Se a dupla com menos de 10 pontos ganhou, a mão vale 3.
-                    if (vencedoraMao.equals(dupla1) && pontosD1 < 10) {
-                        valorMao = 3;
-                    } else if (vencedoraMao.equals(dupla2) && pontosD2 < 10) {
-                        valorMao = 3;
-                    } else {
-                        // Se a dupla com 10 pontos ganhou, a mão vale 1.
-                        valorMao = 1;
-                    }
-                }
+                // O valor da mão já foi definido no início, então apenas retornamos o vencedor.
                 return vencedoraMao.equals(dupla1) ? new int[]{valorMao, 0} : new int[]{0, valorMao};
             }
         }
@@ -114,9 +101,7 @@ public class Mao {
         return new int[]{0, 0};
     }
 
-
     private boolean ehMaoDeDez() {
-        // A verificação é >= 10 para cobrir o caso raro de uma dupla pular de 9 para 11, por exemplo.
         return pontosD1 >= 10 || pontosD2 >= 10;
     }
 
@@ -132,14 +117,10 @@ public class Mao {
     }
 
     private Dupla determinarVencedorMao(int[] vitoriasVaza) {
-        // Alguém fez 2 vitórias
         if (vitoriasVaza[0] == 2 && vitoriasVaza[1] < 2) return dupla1;
         if (vitoriasVaza[1] == 2 && vitoriasVaza[0] < 2) return dupla2;
-
-        // Empatou a primeira e alguém ganhou a segunda
         if (vitoriasVaza[0] == 2 && vitoriasVaza[1] == 1) return dupla1;
         if (vitoriasVaza[1] == 2 && vitoriasVaza[0] == 1) return dupla2;
-
         return null;
     }
 }
